@@ -65,6 +65,7 @@ async function employeeTracker() {
   }
 }
 
+// Department section
 async function departmentInfo() {
   let part2 = await inquirer.prompt([
     {
@@ -79,7 +80,8 @@ async function departmentInfo() {
         "List Department Roles",
         "Create Department Roles",
         "Update Department Role",
-        "Delete Department Role"
+        "Delete Department Role",
+        "View Department Budget"
       ]
     }
   ]);
@@ -95,38 +97,8 @@ async function departmentInfo() {
     let dept_hndlr = await listRoleInfo("%");
   } else if (part2.sub_Dept == "Create Department Roles") {
     let dept_hndlr = await getRoleInfo();
-  }
-}
-
-async function employeeMaintenance() {
-  let part2 = await inquirer.prompt([
-    {
-      type: "list",
-      message: "Choose action : ",
-      name: "sub_Emp",
-      choices: [
-        "List Employees",
-        "List Employees by Manager",
-        "Create Employee",
-        "Update Employee",
-        "Delete Employee"
-      ]
-    }
-  ]);
-  if (part2.sub_Emp == "List Employees") {
-    let emp_hndlr = await listEmployees("id", 1);
-  } else if (part2.sub_Emp == "List Employees by Manager") {
-    let emp_hndlr = await listEmployeesByManager();
-  } else if (part2.sub_Emp == "Create Employee") {
-    let emp_hndlr = await createEmployee();
-  } else if (part2.sub_Emp == "Update Employee") {
-    let emp_hndlr = await updateEmployee();
-  } else if (part2.sub_Emp == "Delete Department") {
-    let emp_hndlr = await deleteDepartment();
-  } else if (part2.sub_Emp == "List Department Roles") {
-    let emp_hndlr = await listRoleInfo("%");
-  } else if (part2.sub_Emp == "Create Department Roles") {
-    let emp_hndlr = await getRoleInfo();
+  } else if (part2.sub_Dept == "View Department Budget") {
+    let dept_hndlr = await showDepartmentBudget();
   }
 }
 
@@ -149,6 +121,12 @@ async function createDepartment() {
   await listDepartments();
 }
 
+async function showDepartmentBudget() {
+  result = await db.query(
+    "select department.name, sum(role.salary) from department inner join role on department.id = role.department_id group by department.name"
+  );
+  console.table(result);
+}
 async function updateDepartment() {
   let part2 = await inquirer.prompt([
     {
@@ -193,7 +171,7 @@ async function listRoleInfo(dept) {
 
 async function listManagers(dept) {
   result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, rl.title from employees emp inner join role on emp.role_id = role.id where role.title = "Manager" and emp.department_id like ?`,
+    `select emp.id, emp.first_name, emp.last_name, role.title from employees emp inner join role on emp.role_id = role.id where role.title = "Manager" and emp.department_id like ?`,
     [dept]
   );
   console.table(result);
@@ -243,17 +221,49 @@ async function getRoleInfo() {
   await listRoleInfo(part2.dept_id);
 }
 
+// Employee section
+async function employeeMaintenance() {
+  let part2 = await inquirer.prompt([
+    {
+      type: "list",
+      message: "Choose action : ",
+      name: "sub_Emp",
+      choices: [
+        "List Employees",
+        "List Employees by Manager",
+        "Create Employee",
+        "Update Employee",
+        "Delete Employee"
+      ]
+    }
+  ]);
+  if (part2.sub_Emp == "List Employees") {
+    let emp_hndlr = await listEmployees("id", "%");
+  } else if (part2.sub_Emp == "List Employees by Manager") {
+    let emp_hndlr = await listEmployeesByManager();
+  } else if (part2.sub_Emp == "Create Employee") {
+    let emp_hndlr = await createEmployee();
+  } else if (part2.sub_Emp == "Update Employee") {
+    let emp_hndlr = await updateEmployee();
+  } else if (part2.sub_Emp == "Delete Department") {
+    let emp_hndlr = await deleteDepartment();
+  } else if (part2.sub_Emp == "List Department Roles") {
+    let emp_hndlr = await listRoleInfo("%");
+  } else if (part2.sub_Emp == "Create Department Roles") {
+    let emp_hndlr = await getRoleInfo();
+  }
+}
+
 async function listEmployees(tbl_col, col_val) {
   result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, emp.role_id, title, emp.department_id, department.name, emp.manager_id, employees.first_name+" "+employees.last_name from (((employees emp inner join role on emp.role_id = role.id) inner join department on emp.department_id = department.id) inner join employees on emp.manager_id = employees.id) where emp.` +
-      tbl_col +
-      ` like ?`,
+    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, , title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
     [col_val]
   );
   console.table(result);
 }
 
 async function listEmployeesByManager() {
+  await listManagers("%");
   let part2 = await inquirer.prompt([
     {
       type: "input",
