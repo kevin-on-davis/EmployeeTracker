@@ -60,7 +60,7 @@ async function employeeTracker() {
   } else if (part1.menu_option == "Maintain Employee Information") {
     let engnrObject = await employeeMaintenance();
   } else if (part1.menu_option == "Terminator - end data entry") {
-    db.end();
+    db.close();
     end_condtn = true;
   }
 }

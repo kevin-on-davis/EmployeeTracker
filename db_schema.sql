@@ -12,7 +12,8 @@ CREATE TABLE employees (
   first_name	varchar(30) NOT NULL,
   last_name		varchar(30) NOT NULL,
   role_id		int,
-  manager_id 	int 
+  manager_id 	int,
+  department_id int
 );
 
 CREATE TABLE role (
