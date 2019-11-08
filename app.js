@@ -29,13 +29,17 @@ class Database {
   }
 }
 
-const db = new Database({
-  host: "localhost",
-  port: 3306,
-  user: "root",
-  password: "IamTheBoxGhost1971",
-  database: "employee_tracker_db"
-});
+if (process.env.JAWSDB_URL) {
+  connection = mysql.createConnection(process.env.JAWSDB_URL);
+} else {
+  const db = new Database({
+    host: "localhost",
+    port: 3306,
+    user: "root",
+    password: "IamTheBoxGhost1971",
+    database: "employee_tracker_db"
+  });
+}
 
 var team = [];
 let part2 = "";
@@ -97,6 +101,8 @@ async function departmentInfo() {
     let dept_hndlr = await listRoleInfo("%");
   } else if (part2.sub_Dept == "Create Department Roles") {
     let dept_hndlr = await getRoleInfo();
+  } else if (part2.sub_Dept == "Update Department Role") {
+    let dept_hndlr = await updateRoleInfo();
   } else if (part2.sub_Dept == "View Department Budget") {
     let dept_hndlr = await showDepartmentBudget();
   }
@@ -221,6 +227,14 @@ async function getRoleInfo() {
   await listRoleInfo(part2.dept_id);
 }
 
+async function updateRoleInfo(tbl_col, col_val) {
+  result = await db.query(
+    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, , title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
+    [col_val]
+  );
+  console.table(result);
+}
+
 // Employee section
 async function employeeMaintenance() {
   let part2 = await inquirer.prompt([
@@ -256,7 +270,7 @@ async function employeeMaintenance() {
 
 async function listEmployees(tbl_col, col_val) {
   result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, , title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
+    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
     [col_val]
   );
   console.table(result);
@@ -326,9 +340,14 @@ async function createEmployee() {
 }
 
 async function updateEmployee() {
-  await listEmployees("%");
+  await listEmployees("id", "%");
   await listDepartments();
   let part2 = await inquirer.prompt([
+    {
+      type: "input",
+      name: "demployee_id",
+      message: `Enter ID of employee to be updated :`
+    },
     {
       type: "input",
       name: "department_id",
@@ -374,29 +393,23 @@ async function updateEmployee() {
   }
   if (part3.first_name) {
     updColumns = updColumns.concat(
-      `,first_name=ifnull(${part3.first_name}, first_name)`
+      `,first_name=ifnull("${part3.first_name}", first_name)`
     );
-    // updValues.push(part3.first_name);
-    // updPlchldrs.concat("?");
   }
   if (part3.last_name) {
     updColumns = updColumns.concat(
-      `,last_name=ifnull(${part3.last_name}, last_name)`
+      `,last_name=ifnull("${part3.last_name}", last_name)`
     );
-    // updValues.push(part3.last_name);
-    // updPlchldrs.concat("?");
   }
   if (part4.manager_id) {
     updColumns = updColumns.concat(
       `,manager_id=ifnull(${part4.manager_id}, manager_id)`
     );
-    // updValues.push(part4.manager_id);
-    // updPlchldrs.concat("?");
   }
   console.log(updColumns);
 
   let result = await db.query(`update employees ${updColumns}`);
-  console.table(result);
+  await listEmployees("id", "%");
 }
 
 async function build_team() {
