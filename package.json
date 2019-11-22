@@ -1,0 +1,26 @@
+{
+  "name": "employeetracker",
+  "version": "1.0.0",
+  "description": "A CLI to manage organizational structure",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "figlet": "^1.2.4",
+    "inquirer": "^7.0.0",
+    "mysql": "^2.17.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevin-on-davis/EmployeeTracker.git"
+  },
+  "author": "Kevin Davis",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kevin-on-davis/EmployeeTracker/issues"
+  },
+  "homepage": "https://github.com/kevin-on-davis/EmployeeTracker#readme"
+}
