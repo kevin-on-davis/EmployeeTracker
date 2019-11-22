@@ -1,7 +1,7 @@
 {
   "name": "employeetracker",
   "version": "1.0.0",
-  "description": "A CLI to manage organizational structure",
+  "description": "A Node CLI to manage organizational structure",
   "main": "app.js",
   "dependencies": {
     "express": "^4.17.1",
