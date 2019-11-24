@@ -55,9 +55,8 @@ async function employeeTracker() {
       name: "menu_option",
       choices: [
         "Maintain Department Information",
-        "Maintain Employee Information"
-        // ,
-        // "Terminator - end data entry"
+        "Maintain Employee Information",
+        "Terminator - end data entry"
       ]
     }
   ]);
@@ -65,8 +64,8 @@ async function employeeTracker() {
     let mngrObject = await departmentInfo();
   } else if (part1.menu_option == "Maintain Employee Information") {
     let engnrObject = await employeeMaintenance();
-    // } else if (part1.menu_option == "Terminator - end data entry") {
-    //   end_condtn = true;
+  } else if (part1.menu_option == "Terminator - end data entry") {
+    end_condtn = true;
   }
 }
 
