@@ -92,7 +92,7 @@ async function departmentInfo() {
   if (part2.sub_Dept == "Create Department") {
     let dept_hndlr = await createDepartment();
   } else if (part2.sub_Dept == "List Departments") {
-    let dept_hndlr = await listDepartments();
+    let dept_hndlr = await listDepartments("%");
   } else if (part2.sub_Dept == "Update Department") {
     let dept_hndlr = await updateDepartment();
   } else if (part2.sub_Dept == "Delete Department") {
@@ -108,8 +108,18 @@ async function departmentInfo() {
   }
 }
 
-async function listDepartments() {
-  result = await db.query("select id, name from department");
+async function listDepartments(myFilter) {
+  result = await db.query(
+    "select id, name from department where id like ? order by 2",
+    [myFilter]
+  );
+  console.table(result);
+}
+
+async function listDepartmentsWithRoles() {
+  result = await db.query(
+    "select distinct department_id, (select name from department where department.id = department_id) as department_name from role group by department_id having count(*) > 0 order by 2"
+  );
   console.table(result);
 }
 
@@ -124,21 +134,23 @@ async function createDepartment() {
   let result = await db.query("insert into department (name) values(?)", [
     part2.dept_name
   ]);
-  await listDepartments();
+  await listDepartments("%");
 }
 
 async function showDepartmentBudget() {
   result = await db.query(
-    "select department.name, sum(role.salary) from department inner join role on department.id = role.department_id group by department.name"
+    "select department.name, sum(role.salary) from department inner join role on department.id = role.department_id group by department.name order by 1"
   );
   console.table(result);
 }
+
 async function updateDepartment() {
+  await listDepartments("%");
   let part2 = await inquirer.prompt([
     {
       type: "input",
-      name: "dept_name",
-      message: "Enter Department Name to be changed :"
+      name: "dept_id",
+      message: "Enter ID of department to be changed :"
     },
     {
       type: "input",
@@ -146,11 +158,11 @@ async function updateDepartment() {
       message: "Enter Department's new name :"
     }
   ]);
-  let result = await db.query("update department set name = ? where name = ?", [
+  let result = await db.query("update department set name = ? where id = ?", [
     part2.new_name,
-    part2.dept_name
+    part2.dept_id
   ]);
-  await listDepartments();
+  await listDepartments("%");
 }
 
 async function deleteDepartment() {
@@ -164,12 +176,12 @@ async function deleteDepartment() {
   let result = await db.query("delete from department where id = ?", [
     part2.department_id
   ]);
-  await listDepartments();
+  await listDepartments("%");
 }
 
 async function listRoleInfo(dept) {
   result = await db.query(
-    "select * from role inner join department on department_id = department.id where department_id like ?",
+    "select department.name, role.department_id, role.id, role.title, role.salary from role inner join department on department_id = department.id where department_id like ? order by 1, 4",
     [dept]
   );
   console.table(result);
@@ -177,14 +189,14 @@ async function listRoleInfo(dept) {
 
 async function listManagers(dept) {
   result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, role.title from employees emp inner join role on emp.role_id = role.id where role.title = "Manager" and emp.department_id like ?`,
+    `select emp.id, emp.last_name, emp.first_name, role.title from employees emp inner join role on emp.role_id = role.id where role.title = "Manager" and emp.department_id like ? order by 2, 3`,
     [dept]
   );
   console.table(result);
 }
 
 async function getRoleInfo() {
-  await listDepartments();
+  await listDepartments("%");
 
   let part2 = await inquirer.prompt([
     {
@@ -228,11 +240,58 @@ async function getRoleInfo() {
 }
 
 async function updateRoleInfo(tbl_col, col_val) {
-  result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, , title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
-    [col_val]
-  );
-  console.table(result);
+  await listDepartmentsWithRoles();
+  let part1 = await inquirer.prompt([
+    {
+      type: "input",
+      name: "dept_id",
+      message:
+        "Enter ID of Department role is for which role is to be altered :"
+    }
+  ]);
+  if (part1.dept_id) {
+    await listRoleInfo(part1.dept_id);
+    let part2 = await inquirer.prompt([
+      {
+        type: "input",
+        name: "role_id",
+        message: "Enter role id to be changed :"
+      },
+      {
+        type: "input",
+        name: "role_name",
+        message: "Enter new role name (hit enter if information is unchanged) :"
+      },
+      {
+        type: "input",
+        name: "salary",
+        message:
+          "Enter new salary figure (hit enter if information is unchanged) :"
+      }
+    ]);
+    console.log(
+      `SQL: update role set title= if(${part2.role_name} is null or ${part2.role_name}='', title, '${part2.role_name}'), salary=if(${part2.salary} is null or ${part2.salary}='',salary, ${part2.salary}) where id = ${part2.role_id}`
+    );
+    if (part2.role_name.length > 0) {
+      result = await db.query(`update role set title= ? where id = ?`, [
+        part2.role_name,
+        part2.role_id
+      ]);
+    }
+
+    if (part2.salary) {
+      result = await db.query(`update role set salary = ? where id = ?`, [
+        part2.salary,
+        part2.role_id
+      ]);
+    }
+
+    result = await listRoleInfo(part1.dept_id);
+    console.table(result);
+  } else {
+    result = await listRoleInfo("%");
+    console.table(result);
+  }
 }
 
 // Employee section
@@ -259,18 +318,14 @@ async function employeeMaintenance() {
     let emp_hndlr = await createEmployee();
   } else if (part2.sub_Emp == "Update Employee") {
     let emp_hndlr = await updateEmployee();
-  } else if (part2.sub_Emp == "Delete Department") {
-    let emp_hndlr = await deleteDepartment();
-  } else if (part2.sub_Emp == "List Department Roles") {
-    let emp_hndlr = await listRoleInfo("%");
-  } else if (part2.sub_Emp == "Create Department Roles") {
-    let emp_hndlr = await getRoleInfo();
+  } else if (part2.sub_Emp == "Delete Employee") {
+    let emp_hndlr = await deleteEmployee();
   }
 }
 
 async function listEmployees(tbl_col, col_val) {
   result = await db.query(
-    `select emp.id, emp.first_name, emp.last_name, emp.role_id, emp.department_id, department.name, emp.manager_id, title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ?`,
+    `select emp.id, emp.last_name, emp.first_name, emp.role_id, emp.department_id, department.name, emp.manager_id, title, CONCAT(employees.first_name," ",employees.last_name) as manager_name from employees emp inner join role on emp.role_id = role.id inner join department on emp.department_id = department.id left join employees on emp.manager_id = employees.id where emp.${tbl_col} like ? order by 2, 3`,
     [col_val]
   );
   console.table(result);
@@ -339,13 +394,28 @@ async function createEmployee() {
   await listEmployees("id", result.insertId);
 }
 
+async function deleteEmployee() {
+  await listEmployees("id", "%");
+  let part1 = await inquirer.prompt([
+    {
+      type: "input",
+      name: "employee_id",
+      message: "Enter id of employee to be deleted :"
+    }
+  ]);
+  let result = await db.query("delete from employees where id = ?", [
+    part1.employee_id
+  ]);
+  await listEmployees("id", "%");
+}
+
 async function updateEmployee() {
   await listEmployees("id", "%");
   await listDepartments();
   let part2 = await inquirer.prompt([
     {
       type: "input",
-      name: "demployee_id",
+      name: "employee_id",
       message: `Enter ID of employee to be updated :`
     },
     {
@@ -387,28 +457,29 @@ async function updateEmployee() {
   let updValues = [];
   let updPlchldrs = "";
   if (part2.department_id) {
-    updColumns = updColumns.concat(
-      `department_id=ifnull(${part2.department_id}, department_id)`
+    let result = await db.query(
+      `update employees set  department_id = ? where id = ?`,
+      [part2.department_id, part2.employee_id]
     );
   }
   if (part3.first_name) {
-    updColumns = updColumns.concat(
-      `,first_name=ifnull("${part3.first_name}", first_name)`
+    let result = await db.query(
+      `update employees set  first_name = ? where id = ?`,
+      [part3.first_name, part2.employee_id]
     );
   }
   if (part3.last_name) {
-    updColumns = updColumns.concat(
-      `,last_name=ifnull("${part3.last_name}", last_name)`
+    let result = await db.query(
+      `update employees set  last_name = ? where id = ?`,
+      [part3.last_name, part2.employee_id]
     );
   }
   if (part4.manager_id) {
-    updColumns = updColumns.concat(
-      `,manager_id=ifnull(${part4.manager_id}, manager_id)`
+    let result = await db.query(
+      `update employees set  first_name = ? where id = ?`,
+      [part4.manager_id, part2.employee_id]
     );
   }
-  console.log(updColumns);
-
-  let result = await db.query(`update employees ${updColumns}`);
   await listEmployees("id", "%");
 }
 
