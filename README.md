@@ -16,3 +16,4 @@ Technology utilized:
 - Express
 - Node
 - figlet - for the "logo"
+  ![Working Giphy](EmployeeTrackerVideo.mp4)
