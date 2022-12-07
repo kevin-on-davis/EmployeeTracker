@@ -4,7 +4,7 @@
   "description": "A Node CLI to manage organizational structure",
   "main": "app.js",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.18.2",
     "figlet": "^1.2.4",
     "inquirer": "^7.0.0",
     "mysql": "^2.17.1"
